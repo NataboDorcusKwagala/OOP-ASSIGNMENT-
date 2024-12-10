@@ -1,0 +1,454 @@
+1Secure Access with Passwords on Each Switch
+##Set Console and VTY (Telnet/SSH) Passwords
+line console 0
+password cisco
+login
+exit
+
+line vty 0 15
+password cisco
+login
+exit
+
+##Enable Password Encryption
+service password-encryption
+
+##Set Enable Secret Password:
+enable secret cisco
+
+2Configure SSH Access
+##Configuring SSH Access
+#creating hostnames
+hostname Router1 Multi_layer_Sw1 switch
+
+#Generate RSA Key Pair
+crypto key generate rsa general-keys modulus 1024
+
+#Set Domain Name 
+ip domain-name ucu.ac.ug
+
+#Configure Local User Accounts
+username admin password cisco
+
+#Enable SSH on VTY Lines
+line vty 0 15
+login local
+transport input ssh
+exit
+
+#Verify SSH Configuration
+show ip ssh
+
+
+#Banner Messages
+Unauthorized access!!!.
+
+#Enable Logging of Login Attempts
+logging console
+
+
+
+
+
+
+#Creating VLANs on both Multi-layer switch and switch
+vlan 10
+name Finance
+exit
+vlan 20
+name IT
+exit
+vlan 30
+name HR
+exit
+vlan 40
+name AP
+exit
+vlan 50
+name Volp
+exit
+vlan 100
+name native
+exit
+## This one only on the multi-layer switches
+vlan 200
+name server
+exit
+
+
+
+
+
+#How to Trunk
+interface GigabitEthernet0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk allowed vlan 10,20,30,40,50,200
+exit
+
+
+#How to Trunk Native Vlan 100
+#Switch
+int Fa0/1
+switchport mode trunk
+switchport trunk native vlan 100
+ex
+
+#Multilayer Switch
+int Fa0/1
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk native vlan 100
+ex
+
+
+
+
+
+#On Multilayer Switch 1
+interface GigabitEthernet0/0
+switchport mode access
+switchport access vlan 10 or 20 or 30 - 200
+
+
+##Creating SVIs on the all Multi-layers
+interface Vlan10
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+
+interface Vlan20
+ip address 192.168.20.1 255.255.255.0
+no shutdown
+
+interface Vlan30
+ip address 192.168.30.1 255.255.255.0
+no shutdown
+
+interface Vlan40
+ip address 192.168.40.1 255.255.255.0
+no shutdown
+exit
+
+interface Vlan50
+ip address 192.168.50.1 255.255.255.0
+no shutdown
+exit
+
+interface Vlan200
+ip address 10.100.100.1 255.255.255.0
+no shutdown
+exit
+
+
+
+
+
+##Configuring STP
+#Enable Rapid PVST+ on every switch(Both Multi-layer switch and switch) 
+enable
+configure terminal
+spanning-tree mode rapid-pvst
+
+#Enable PortFast and BPDU Guard on switches connecting end devices
+spanning-tree portfast
+spanning-tree bpduguard enable
+
+#Configuring AP
+step1
+Enter the Ap and select Port1 to assign a SSID e.g 
+Finance_Department
+
+step2
+Select a Security protocal to use 
+i.e WPA2-Psk and insert a Password e.g
+finance10
+NB:-->> These change with different APs in different Departments
+
+
+
+
+
+#On Multilayer Switch 1 (Primary Root Bridge)
+spanning-tree vlan 10 priority 4096
+spanning-tree vlan 20 priority 4096
+spanning-tree vlan 30 priority 4096
+spanning-tree vlan 40 priority 4096
+spanning-tree vlan 50 priority 4096
+spanning-tree vlan 200 priority 4096
+
+#On Multilayer Switch 2 (Secondary Root Bridge)
+spanning-tree vlan 10 priority 8192
+spanning-tree vlan 20 priority 8192
+spanning-tree vlan 30 priority 8192
+spanning-tree vlan 40 priority 8192
+spanning-tree vlan 50 priority 8192
+spanning-tree vlan 200 priority 8192
+
+
+#On Multilayer Switch 3 (Third Root Bridge)
+spanning-tree vlan 10 priority 12288
+spanning-tree vlan 20 priority 12288
+spanning-tree vlan 30 priority 12288
+spanning-tree vlan 40 priority 12288
+spanning-tree vlan 50 priority 12288
+spanning-tree vlan 200 priority 12288
+
+#show spanning-tree summary
+show spanning-tree vlan 10
+show spanning-tree vlan 20
+show spanning-tree vlan 30
+show spanning-tree vlan 40
+show spanning-tree vlan 50
+show spanning-tree vlan 200
+
+
+
+
+#Do this for both interfaces Inter-connected on the same switch 
+step-1
+enable
+configure terminal
+interface Port-channel1
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk native vlan 100
+switchport trunk allowed vlan 10,20,30,40,50,200
+exit
+
+step-2
+interface GigabitEthernet1/1
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk allowed vlan 10,20,30,40,50,200
+exit
+
+step-3
+interface GigabitEthernet1/1
+channel-group 1 mode active
+
+step-4
+interface GigabitEthernet0/1
+switchport trunk encapsulation dot1q
+switchport mode trunk
+switchport trunk allowed vlan 10,20,30,40,50,200
+exit
+
+step-5
+interface GigabitEthernet0/1
+channel-group 1 mode active
+
+NB:-->> Change interface Port-channel1 to 2 for the next channel on Multi-layer switch 2 joining Multi-layer switch 3 
+
+
+
+#Configuring the server
+Step1 
+Assigning an Ip address with its subnetmask to the server eg
+10.100.100.100 255.255.255.0
+Step2
+Assigning a default Gateway and Dns server address e.g
+10.100.100.1
+8.8.8.8
+
+##Server Helper ip
+ip helper-address 10.100.100.100
+
+#Creating sub_interfaces and assigning them
+a server helper ip address on all Routers
+
+int g0/0.10
+encapsulation dot1Q 10
+no ip add 192.168.10.1 255.255.255.0
+ip add 192.168.10.1 255.255.255.0
+ip helper-address 10.100.100.100
+exit
+
+int g0/0.20
+encapsulation dot1Q 20
+no ip add 192.168.20.1 255.255.255.0
+ip add 192.168.20.1 255.255.255.0
+ip helper-address 10.100.100.100
+exit
+
+int g0/0.30
+encapsulation dot1Q 30
+no ip add 192.168.30.1 255.255.255.0
+ip add 192.168.30.1 255.255.255.0
+ip helper-address 10.100.100.100
+exit
+
+int g0/0.40
+encapsulation dot1Q 40
+no ip add 192.168.40.1 255.255.255.0
+ip add 192.168.40.1 255.255.255.0
+ip helper-address 10.100.100.100
+exit
+
+int g0/0.50
+encapsulation dot1Q 50
+no ip add 192.168.50.1 255.255.255.0
+ip add 192.168.50.1 255.255.255.0
+ip helper-address 10.100.100.100
+exit
+
+
+#creating the Network Pools on the Server
+step1
+Enter the server and selecting Dhcp from the services
+
+step2
+Turning on the server service button 
+
+step3
+Assigning a pool Name, 
+Default Gateway of the Vlan, 
+Dns_server,
+Starting ip address of the Vlan and its subnet mask,
+Max Number of User ips to be allowed 
+
+NB:-->The following are the network pools we have in our network
+Voip_Pool assigning ips for Voiceip_Phones
+AP_Pool assigning ips for all Aps 
+HR_Pool assigning ips for the HR Department only
+IT_Pool assigning ips for IT Department only
+FinacePool assigning ips for Finance Department only
+
+
+
+
+##Static Routing
+#R1
+ip route 192.168.10.0 255.255.255.0 172.16.10.2 
+ip route 192.168.40.0 255.255.255.0 172.16.10.2 
+ip route 192.168.50.0 255.255.255.0 172.16.10.2 
+ip route 192.168.20.0 255.255.255.0 10.10.20.1
+ip route 192.168.30.0 255.255.255.0 10.10.10.2
+ip route 192.168.40.0 255.255.255.0 10.10.20.1
+ip route 192.168.50.0 255.255.255.0 10.10.20.1
+ip route 192.168.40.0 255.255.255.0 10.10.10.2
+ip route 192.168.50.0 255.255.255.0 10.10.10.2
+ip route 172.16.10.0 255.255.255.0 10.10.10.2
+ip route 172.16.10.0 255.255.255.0 10.10.20.1
+
+#R2
+ip route 192.168.20.0 255.255.255.0 172.16.20.2
+ip route 192.168.40.0 255.255.255.0 172.16.20.2
+ip route 192.168.50.0 255.255.255.0 172.16.20.2
+ip route 192.168.10.0 255.255.255.0 10.10.20.2
+ip route 192.168.30.0 255.255.255.0 10.10.30.1
+ip route 192.168.50.0 255.255.255.0 10.10.30.1
+ip route 192.168.50.0 255.255.255.0 10.10.20.2
+ip route 192.168.40.0 255.255.255.0 10.10.30.1
+ip route 192.168.40.0 255.255.255.0 10.10.20.2
+ip route 172.16.20.0 255.255.255.252 10.10.20.2
+ip route 172.16.20.0 255.255.255.252 10.10.30.1
+
+#R3
+ip route 192.168.30.0 255.255.255.0 172.16.30.2
+ip route 192.168.40.0 255.255.255.0 172.16.30.2
+ip route 192.168.50.0 255.255.255.0 172.16.30.2
+ip route 192.168.10.0 255.255.255.0 10.10.10.1
+ip route 192.168.20.0 255.255.255.0 10.10.30.2
+ip route 192.168.40.0 255.255.255.0 10.10.30.2
+ip route 192.168.40.0 255.255.255.0 10.10.10.1
+ip route 192.168.50.0 255.255.255.0 10.10.30.2
+ip route 192.168.50.0 255.255.255.0 10.10.10.1
+ip route 172.16.30.0 255.255.255.252 10.10.10.1
+ip route 172.16.30.0 255.255.255.252 10.10.30.2
+
+
+
+#On Multilayer Switch 1
+ip route 192.168.20.0 255.255.255.0 172.16.10.1
+ip route 192.168.30.0 255.255.255.0 172.16.10.1
+ip route 0.0.0.0 0.0.0.0 172.16.20.1
+
+#On Multilayer Switch 2
+ip route 192.168.10.0 255.255.255.0 172.16.20.1
+ip route 192.168.30.0 255.255.255.0 172.16.20.1
+ip route 0.0.0.0 0.0.0.0 172.16.20.1
+
+#On Multilayer Switch 3
+ip route 192.168.10.0 255.255.255.0 172.16.30.1
+ip route 192.168.20.0 255.255.255.0 172.16.30.1
+ip route 0.0.0.0 0.0.0.0 172.16.30.1
+
+enable
+configure terminal
+hostname (switch, Multi_layer_Sw, Router)
+line console 0
+password cisco
+login
+exit
+line vty 0 15
+password cisco
+login
+exit
+
+enable secret cisco
+banner motd #Unauthorized access!!!#
+service password-encryption
+
+username admin password cisco
+ip domain-name ucu.ac.ug
+
+crypto key generate rsa general-keys modulus 1024
+ip ssh version 2
+
+line vty 0 15
+login local
+transport input ssh
+exit
+
+logging console
+
+
+
+
+1Secure Access with Passwords on Each Switch
+##Set Console and VTY (Telnet/SSH) Passwords
+line console 0
+password cisco
+login
+exit
+
+line vty 0 15
+password cisco
+login
+exit
+
+##Enable Password Encryption
+service password-encryption
+
+##Set Enable Secret Password:
+enable secret cisco
+
+2Configure SSH Access
+##Configuring SSH Access
+#creating hostnames
+hostname Router1 Multi_layer_Sw1 switch
+
+#Generate RSA Key Pair
+crypto key generate rsa general-keys modulus 1024
+
+#Set Domain Name 
+ip domain-name ucu.ac.ug
+
+#Configure Local User Accounts
+username admin password cisco
+
+#Enable SSH on VTY Lines
+line vty 0 15
+login local
+transport input ssh
+exit
+
+#Verify SSH Configuration
+show ip ssh
+
+
+#Banner Messages
+Unauthorized access!!!.
+
+#Enable Logging of Login Attempts
+logging console
